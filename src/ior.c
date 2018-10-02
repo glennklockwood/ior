@@ -12,6 +12,8 @@
 # include "config.h"
 #endif
 
+#define _XOPEN_SOURCE 600
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,6 +22,11 @@
 #include <math.h>
 #include <mpi.h>
 #include <string.h>
+
+#if defined(HAVE_STRINGS_H)
+#include <strings.h>
+#endif
+
 #include <sys/stat.h>           /* struct stat */
 #include <time.h>
 
@@ -458,12 +465,12 @@ static int CountErrors(IOR_param_t * test, int access, int errors)
  */
 static void *aligned_buffer_alloc(size_t size)
 {
-        size_t pageSize;
+        long pageSize;
         size_t pageMask;
         char *buf, *tmp;
         char *aligned;
 
-        pageSize = getpagesize();
+        pageSize = sysconf(_SC_PAGESIZE);
         pageMask = pageSize - 1;
         buf = malloc(size + pageSize + sizeof(void *));
         if (buf == NULL)
