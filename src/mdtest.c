@@ -28,7 +28,7 @@
  *   $Date: 2013/11/27 17:05:31 $
  *   $Author: brettkettering $
  */
-#define _POSIX_C_SOURCE 200112L
+#define _XOPEN_SOURCE 700
 
 #include <limits.h>
 #include <math.h>
