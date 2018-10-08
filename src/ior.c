@@ -465,12 +465,16 @@ static int CountErrors(IOR_param_t * test, int access, int errors)
  */
 static void *aligned_buffer_alloc(size_t size)
 {
-        long pageSize;
         size_t pageMask;
         char *buf, *tmp;
         char *aligned;
 
-        pageSize = sysconf(_SC_PAGESIZE);
+#ifdef HAVE_GETPAGESIZE
+        size_t pageSize = getpagesize();
+#else
+        long pageSize = sysconf(_SC_PAGESIZE);
+#endif
+
         pageMask = pageSize - 1;
         buf = malloc(size + pageSize + sizeof(void *));
         if (buf == NULL)
