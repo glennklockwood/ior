@@ -21,6 +21,9 @@
 #include <ctype.h>
 #include <string.h>
 
+#if defined(HAVE_STRINGS_H)
+#include <strings.h>
+#endif
 
 #include "utilities.h"
 #include "ior.h"
@@ -48,7 +51,12 @@ static size_t NodeMemoryStringToBytes(char *size_str)
         if (percent > 100 || percent < 0)
                 ERR("percentage must be between 0 and 100");
 
+#ifdef HAVE_SYSCONF
         page_size = sysconf(_SC_PAGESIZE);
+#else
+        page_size = getpagesize();
+#endif
+
 #ifdef  _SC_PHYS_PAGES
         num_pages = sysconf(_SC_PHYS_PAGES);
         if (num_pages == -1)
@@ -88,9 +96,8 @@ static void CheckRunSettings(IOR_test_t *tests)
                  * (We assume int-valued params are exclusively 0 or 1.)
                  */
                 if ((params->openFlags & IOR_RDWR)
-                    && ((params->readFile | params->checkRead)
-                        ^ (params->writeFile | params->checkWrite))
-                    && (params->openFlags & IOR_RDWR)) {
+                    && ((params->readFile | params->checkRead | params->checkWrite)
+                        ^ params->writeFile)) {
 
                         params->openFlags &= ~(IOR_RDWR);
                         if (params->readFile | params->checkRead) {
@@ -100,7 +107,6 @@ static void CheckRunSettings(IOR_test_t *tests)
                         else
                                 params->openFlags |= IOR_WRONLY;
                 }
-
         }
 }
 
@@ -172,6 +178,8 @@ void DecodeDirective(char *line, IOR_param_t *params)
                 params->repetitions = atoi(value);
         } else if (strcasecmp(option, "intertestdelay") == 0) {
                 params->interTestDelay = atoi(value);
+        } else if (strcasecmp(option, "interiodelay") == 0) {
+                params->interIODelay = atoi(value);
         } else if (strcasecmp(option, "readfile") == 0) {
                 params->readFile = atoi(value);
         } else if (strcasecmp(option, "writefile") == 0) {
@@ -370,6 +378,7 @@ IOR_test_t *ReadConfigScript(char *scriptName)
         int runflag = 0;
         char linebuf[MAX_STR];
         char empty[MAX_STR];
+        char *ptr;
         FILE *file;
         IOR_test_t *head = NULL;
         IOR_test_t *tail = NULL;
@@ -392,15 +401,22 @@ IOR_test_t *ReadConfigScript(char *scriptName)
 
         /* Iterate over a block of IOR commands */
         while (fgets(linebuf, MAX_STR, file) != NULL) {
+                /* skip over leading whitespace */
+                ptr = linebuf;
+                while (isspace(*ptr))
+                    ptr++;
+
                 /* skip empty lines */
-                if (sscanf(linebuf, "%s", empty) == -1)
+                if (sscanf(ptr, "%s", empty) == -1)
                         continue;
+
                 /* skip lines containing only comments */
-                if (sscanf(linebuf, " #%s", empty) == 1)
+                if (sscanf(ptr, " #%s", empty) == 1)
                         continue;
-                if (contains_only(linebuf, "ior stop")) {
+
+                if (contains_only(ptr, "ior stop")) {
                         break;
-                } else if (contains_only(linebuf, "run")) {
+                } else if (contains_only(ptr, "run")) {
                         if (runflag) {
                                 /* previous line was a "run" as well
                                    create duplicate test */
@@ -416,9 +432,9 @@ IOR_test_t *ReadConfigScript(char *scriptName)
                         tail->next = CreateTest(&tail->params, test_num++);
                         AllocResults(tail);
                         tail = tail->next;
-                        ParseLine(linebuf, &tail->params);
+                        ParseLine(ptr, &tail->params);
                 } else {
-                        ParseLine(linebuf, &tail->params);
+                        ParseLine(ptr, &tail->params);
                 }
         }
 
@@ -450,7 +466,8 @@ IOR_test_t *ParseCommandLine(int argc, char **argv)
     parameters = & initialTestParams;
 
     char APIs[1024];
-    aiori_supported_apis(APIs);
+    char APIs_legacy[1024];
+    aiori_supported_apis(APIs, APIs_legacy);
     char apiStr[1024];
     sprintf(apiStr, "API for I/O [%s]", APIs);
 
@@ -513,6 +530,7 @@ IOR_test_t *ParseCommandLine(int argc, char **argv)
           {'Z', NULL,        "reorderTasksRandom -- changes task ordering to random ordering for readback", OPTION_FLAG, 'd', & initialTestParams.reorderTasksRandom},
           {.help="  -O summaryFile=FILE                 -- store result data into this file", .arg = OPTION_OPTIONAL_ARGUMENT},
           {.help="  -O summaryFormat=[default,JSON,CSV] -- use the format for outputing the summary", .arg = OPTION_OPTIONAL_ARGUMENT},
+          {0, "dryRun",      "do not perform any I/Os just run evtl. inputs print dummy output", OPTION_FLAG, 'd', & initialTestParams.dryRun},
           LAST_OPTION,
         };
 

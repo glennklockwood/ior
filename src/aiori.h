@@ -65,6 +65,7 @@ typedef struct ior_aiori_statfs {
 
 typedef struct ior_aiori {
         char *name;
+        char *name_legacy;
         void *(*create)(char *, IOR_param_t *);
         void *(*open)(char *, IOR_param_t *);
         IOR_offset_t (*xfer)(int, void *, IOR_size_t *,
@@ -97,11 +98,11 @@ extern ior_aiori_t s3_plus_aiori;
 extern ior_aiori_t s3_emc_aiori;
 extern ior_aiori_t rados_aiori;
 
-void aiori_initialize();
-void aiori_finalize();
+void aiori_initialize(IOR_test_t * tests);
+void aiori_finalize(IOR_test_t * tests);
 const ior_aiori_t *aiori_select (const char *api);
 int aiori_count (void);
-void aiori_supported_apis(char * APIs);
+void aiori_supported_apis(char * APIs, char * APIs_legacy);
 void airoi_parse_options(int argc, char ** argv, option_help * global_options);
 const char *aiori_default (void);
 

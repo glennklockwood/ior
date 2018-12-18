@@ -28,7 +28,6 @@
  *   $Date: 2013/11/27 17:05:31 $
  *   $Author: brettkettering $
  */
-
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -59,6 +58,11 @@
 
 #include <fcntl.h>
 #include <string.h>
+
+#if HAVE_STRINGS_H
+#include <strings.h>
+#endif
+
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
@@ -180,7 +184,7 @@ void offset_timers(double * t, int tcount) {
         fflush( out_logfile );
     }
 
-    toffset = MPI_Wtime() - t[tcount];
+    toffset = GetTimeStamp() - t[tcount];
     for (i = 0; i < tcount+1; i++) {
         t[i] += toffset;
     }
@@ -846,7 +850,7 @@ void directory_test(const int iteration, const int ntasks, const char *path, ran
     }
 
     MPI_Barrier(testComm);
-    t[0] = MPI_Wtime();
+    t[0] = GetTimeStamp();
 
     /* create phase */
     if(create_only) {
@@ -881,7 +885,7 @@ void directory_test(const int iteration, const int ntasks, const char *path, ran
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[1] = MPI_Wtime();
+    t[1] = GetTimeStamp();
 
     /* stat phase */
     if (stat_only) {
@@ -913,7 +917,7 @@ void directory_test(const int iteration, const int ntasks, const char *path, ran
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[2] = MPI_Wtime();
+    t[2] = GetTimeStamp();
 
     /* read phase */
     if (read_only) {
@@ -945,7 +949,7 @@ void directory_test(const int iteration, const int ntasks, const char *path, ran
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[3] = MPI_Wtime();
+    t[3] = GetTimeStamp();
 
     if (remove_only) {
       for (int dir_iter = 0; dir_iter < directory_loops; dir_iter ++){
@@ -978,7 +982,7 @@ void directory_test(const int iteration, const int ntasks, const char *path, ran
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[4] = MPI_Wtime();
+    t[4] = GetTimeStamp();
 
     if (remove_only) {
         if (unique_dir_per_task) {
@@ -1048,7 +1052,7 @@ int updateStoneWallIterations(int iteration, rank_progress_t * progress, double 
   uint64_t done = progress->items_done;
   long long unsigned max_iter = 0;
   MPI_Allreduce(& progress->items_done, & max_iter, 1, MPI_LONG_LONG_INT, MPI_MAX, testComm);
-  summary_table[iteration].stonewall_time[MDTEST_FILE_CREATE_NUM] = MPI_Wtime() - tstart;
+  summary_table[iteration].stonewall_time[MDTEST_FILE_CREATE_NUM] = GetTimeStamp() - tstart;
 
   // continue to the maximum...
   long long min_accessed = 0;
@@ -1083,7 +1087,7 @@ void file_test(const int iteration, const int ntasks, const char *path, rank_pro
     }
 
     MPI_Barrier(testComm);
-    t[0] = MPI_Wtime();
+    t[0] = GetTimeStamp();
 
     /* create phase */
     if (create_only ) {
@@ -1151,7 +1155,7 @@ void file_test(const int iteration, const int ntasks, const char *path, rank_pro
     if (barriers) {
       MPI_Barrier(testComm);
     }
-    t[1] = MPI_Wtime();
+    t[1] = GetTimeStamp();
 
     /* stat phase */
     if (stat_only ) {
@@ -1179,7 +1183,7 @@ void file_test(const int iteration, const int ntasks, const char *path, rank_pro
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[2] = MPI_Wtime();
+    t[2] = GetTimeStamp();
 
     /* read phase */
     if (read_only ) {
@@ -1211,7 +1215,7 @@ void file_test(const int iteration, const int ntasks, const char *path, rank_pro
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[3] = MPI_Wtime();
+    t[3] = GetTimeStamp();
 
     if (remove_only) {
       for (int dir_iter = 0; dir_iter < directory_loops; dir_iter ++){
@@ -1243,7 +1247,7 @@ void file_test(const int iteration, const int ntasks, const char *path, rank_pro
     if (barriers) {
         MPI_Barrier(testComm);
     }
-    t[4] = MPI_Wtime();
+    t[4] = GetTimeStamp();
     if (remove_only) {
         if (unique_dir_per_task) {
             unique_dir_access(RM_UNI_DIR, temp_path);
@@ -1308,7 +1312,8 @@ void print_help (void) {
     int j;
 
     char APIs[1024];
-    aiori_supported_apis(APIs);
+    char APIs_legacy[1024];
+    aiori_supported_apis(APIs, APIs_legacy);
     char apiStr[1024];
     sprintf(apiStr, "API for I/O [%s]", APIs);
 
@@ -1413,68 +1418,7 @@ void summarize_results(int iterations) {
             start = stop = 0;
         }
 
-        /* calculate aggregates */
-        if (barriers) {
-            double maxes[iterations];
-
-
-            /* Because each proc times itself, in the case of barriers we
-             * have to backwards calculate the time to simulate the use
-             * of barriers.
-             */
-            for (i = start; i < stop; i++) {
-                for (j=0; j<iterations; j++) {
-                    maxes[j] = all[j*tableSize + i];
-                    for (k=0; k<size; k++) {
-                        curr = all[(k*tableSize*iterations) + (j*tableSize) + i];
-                        if (maxes[j] < curr) {
-                            maxes[j] = curr;
-                        }
-                    }
-                }
-
-                min = max = maxes[0];
-                for (j=0; j<iterations; j++) {
-                    if (min > maxes[j]) {
-                        min = maxes[j];
-                    }
-                    if (max < maxes[j]) {
-                        max = maxes[j];
-                    }
-                    sum += maxes[j];
-                }
-                mean = sum / iterations;
-                for (j=0; j<iterations; j++) {
-                    var += pow((mean - maxes[j]), 2);
-                }
-                var = var / iterations;
-                sd = sqrt(var);
-                switch (i) {
-                case 0: strcpy(access, "Directory creation:"); break;
-                case 1: strcpy(access, "Directory stat    :"); break;
-                    /* case 2: strcpy(access, "Directory read    :"); break; */
-                case 2: ;                                      break; /* N/A */
-                case 3: strcpy(access, "Directory removal :"); break;
-                case 4: strcpy(access, "File creation     :"); break;
-                case 5: strcpy(access, "File stat         :"); break;
-                case 6: strcpy(access, "File read         :"); break;
-                case 7: strcpy(access, "File removal      :"); break;
-                default: strcpy(access, "ERR");                 break;
-                }
-                if (i != 2) {
-                    fprintf(out_logfile, "   %s ", access);
-                    fprintf(out_logfile, "%14.3f ", max);
-                    fprintf(out_logfile, "%14.3f ", min);
-                    fprintf(out_logfile, "%14.3f ", mean);
-                    fprintf(out_logfile, "%14.3f\n", sd);
-                    fflush(out_logfile);
-                }
-                sum = var = 0;
-
-            }
-
-        } else {
-            for (i = start; i < stop; i++) {
+        for (i = start; i < stop; i++) {
                 min = max = all[i];
                 for (k=0; k < size; k++) {
                     for (j = 0; j < iterations; j++) {
@@ -1520,7 +1464,6 @@ void summarize_results(int iterations) {
                 }
                 sum = var = 0;
 
-            }
         }
 
         /* calculate tree create/remove rates */
@@ -1620,7 +1563,7 @@ void valid_tests() {
         FAIL("-c not compatible with -B");
     }
 
-    if ( strcasecmp(backend_name, "POSIX") != 0 && strcasecmp(backend_name, "DUMMY") != 0) {
+    if (strcasecmp(backend_name, "POSIX") != 0 && strcasecmp(backend_name, "DUMMY") != 0) {
       FAIL("-a only supported interface is POSIX (and DUMMY) right now!");
     }
 
@@ -1892,7 +1835,7 @@ static void mdtest_iteration(int i, int j, MPI_Group testgroup, mdtest_results_t
       /* create hierarchical directory structure */
       MPI_Barrier(testComm);
 
-      startCreate = MPI_Wtime();
+      startCreate = GetTimeStamp();
       for (int dir_iter = 0; dir_iter < directory_loops; dir_iter ++){
         prep_testdir(j, dir_iter);
 
@@ -1954,7 +1897,7 @@ static void mdtest_iteration(int i, int j, MPI_Group testgroup, mdtest_results_t
         }
       }
       MPI_Barrier(testComm);
-      endCreate = MPI_Wtime();
+      endCreate = GetTimeStamp();
       summary_table->rate[8] =
           num_dirs_in_tree / (endCreate - startCreate);
       summary_table->time[8] = (endCreate - startCreate);
@@ -2025,7 +1968,7 @@ static void mdtest_iteration(int i, int j, MPI_Group testgroup, mdtest_results_t
 
   MPI_Barrier(testComm);
   if (remove_only) {
-      startCreate = MPI_Wtime();
+      startCreate = GetTimeStamp();
       for (int dir_iter = 0; dir_iter < directory_loops; dir_iter ++){
         prep_testdir(j, dir_iter);
         if (unique_dir_per_task) {
@@ -2087,7 +2030,7 @@ static void mdtest_iteration(int i, int j, MPI_Group testgroup, mdtest_results_t
       }
 
       MPI_Barrier(testComm);
-      endCreate = MPI_Wtime();
+      endCreate = GetTimeStamp();
       summary_table->rate[9] = num_dirs_in_tree / (endCreate - startCreate);
       summary_table->time[9] = endCreate - startCreate;
       summary_table->items[9] = num_dirs_in_tree;
@@ -2176,7 +2119,8 @@ mdtest_results_t * mdtest_run(int argc, char **argv, MPI_Comm world_com, FILE * 
     char * path = "./out";
     int randomize = 0;
     char APIs[1024];
-    aiori_supported_apis(APIs);
+    char APIs_legacy[1024];
+    aiori_supported_apis(APIs, APIs_legacy);
     char apiStr[1024];
     sprintf(apiStr, "API for I/O [%s]", APIs);
 
