@@ -1,3 +1,5 @@
+.. _scripting:
+
 Scripting
 =========
 
@@ -19,7 +21,8 @@ will *not* run any tests with the implicit ``-W`` since that argument does not
 get applied until after the ``-f`` option (and its constituent runs) are complete.
 
 Input scripts are specified using the long-form option names that correspond to
-each command-line option.  In addition to long-form options,
+each command-line option described in the :ref:`Options` page.  In addition to
+long-form options,
 
     * ``IOR START`` and ``IOR END`` mark the beginning and end of the script
     * ``RUN`` dispatches the test using all of the options specified before it
@@ -31,42 +34,23 @@ each command-line option.  In addition to long-form options,
 An example of a script: ::
 
   IOR START
-      api=[POSIX|MPIIO|HDF5|HDFS|S3|S3_EMC|NCMPI|RADOS]
+      api=posix
       testFile=testFile
       hintsFileName=hintsFile
       repetitions=8
-      multiFile=0
       interTestDelay=5
       readFile=1
       writeFile=1
       filePerProc=0
       checkWrite=0
       checkRead=0
-      keepFile=1
       quitOnError=0
       segmentCount=1
       blockSize=32k
-      outlierThreshold=0
-      setAlignment=1
-      transferSize=32
-      singleXferAttempt=0
-      individualDataSets=0
       verbose=0
       numTasks=32
-      collective=1
-      preallocate=0
-      useFileView=0
-      keepFileWithError=0
-      setTimeStampSignature=0
-      useSharedFilePointer=0
-      useStridedDatatype=0
-      uniqueDir=0
-      fsync=0
-      storeFileOffset=0
-      maxTimeDuration=60
-      deadlineForStonewalling=0
-      useExistingTestFile=0
-      useO_DIRECT=0
+      fsync=1
+      posix.odirect=0
       showHints=0
       showHelp=0
   RUN

@@ -18,6 +18,7 @@ string or numeric argument).
   using ``-c`` is equivalent to ``--collective``.  Module-specific options are
   the same (e.g., ``--posix.odirect``).
 
+For more information on using IOR with a command file, see :ref:`scripting`.
 
 
 Supported flags
