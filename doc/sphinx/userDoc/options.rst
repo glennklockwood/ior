@@ -15,11 +15,13 @@ string or numeric argument).
   [0]=false.
 * All directives are case-insensitive.
 * Long args are supported on the command line using double dashes.  For example,
-  using ``-c`` is equivalent to ``--collective``.  Module-specific parameters
-  are the same (e.g., ``--posix.odirect``).
+  using ``-c`` is equivalent to ``--collective``.  Module-specific options are
+  the same (e.g., ``--posix.odirect``).
 
-Supported Flags
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Supported flags
+--------------------------------------------------------------------------------
 
 =========  ====================   ==============================================================================
 Short arg  Long arg               Description
@@ -54,8 +56,11 @@ Short arg  Long arg               Description
   N/A      dryRun                 do not perform any I/Os just run evtl. inputs print dummy output
 =========  ====================   ==============================================================================
 
-Supported Arguments
-^^^^^^^^^^^^^^^^^^^
+
+
+
+Supported arguments
+--------------------------------------------------------------------------------
 
 =========  =============================  =======  ===========
 Short arg  Long arg                       Type     Description
@@ -88,8 +93,11 @@ Short arg  Long arg                       Type     Description
   N/A      summaryFormat                  string   format for outputing the summary (default, json, csv)
 =========  =============================  =======  ===========
 
-Module-Specific Flags and Arguments
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+Module-specific options
+--------------------------------------------------------------------------------
 
 +------------+-------------------------+------------------------------------------------------+
 | Module     | Long arg                | Description                                          |
@@ -108,8 +116,11 @@ Module-Specific Flags and Arguments
 |            | mmap.madv_pattern       | Use advise to indicate the pattern random/sequential |
 +------------+-------------------------+------------------------------------------------------+
 
-Parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+Flags and Arguments
+--------------------------------------------------------------------------------
 
 refNum
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -345,8 +356,11 @@ summaryAlways
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Always print the long summary for each test even if the job is interrupted. (default: 0)
 
-POSIX-Only
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+POSIX-only flags and arguments
+--------------------------------------------------------------------------------
 
 posix.odirect
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -369,8 +383,11 @@ fsync
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Perform fsync after POSIX file close (default: 0)
 
-MPIIO-Only
-^^^^^^^^^^
+
+
+
+MPIIO-only flags & arguments
+--------------------------------------------------------------------------------
 
 preallocate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -392,8 +409,11 @@ useStridedDatatype
 Create a datatype (max=2GB) for strided access;
 akin to ``MULTIBLOCK_REGION_SIZE`` (default: 0)
 
-HDF5-Only
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+HDF5-only flags & arguments
+--------------------------------------------------------------------------------
 
 individualDataSets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -413,8 +433,11 @@ hdf5.collectiveMetadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Enable HDF5 collective metadata (available since HDF5-1.10.0)
 
-MPIIO-, HDF5-, AND NCMPI-Only
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+MPIIO-, HDF5-, and NCMPI-only options
+--------------------------------------------------------------------------------
 
 collective
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -425,8 +448,11 @@ showHints
 Show hint/value pairs attached to open file.  Not available
 for NCMPI. (default: 0)
 
-Lustre-Specific
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+Lustre-specific options
+--------------------------------------------------------------------------------
 
 lustreStripeCount
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -444,8 +470,11 @@ lustreIgnoreLocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Disable Lustre range locking (default: 0)
 
-GPFS-Specific
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+GPFS-specific options
+--------------------------------------------------------------------------------
 
 gpfsHintAccess
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -457,8 +486,11 @@ Release all locks immediately after opening or
 creating file.  Might help mitigate lock-revocation traffic when many
 processes write/read to same file. (default: 0)
 
-BeeGFS-Specific
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+BeeGFS-specific options
+--------------------------------------------------------------------------------
 
 beegfsNumTargets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -469,7 +501,10 @@ beegfsChunkSize
 Define the stripe chunk size for the file(s) on BeeGFS.  Must be a power of two
 and larger than 64K.
 
-Incompressible notes
+
+
+
+Notes on compressibility
 --------------------------------------------------------------------------------
 Please note that incompressibility is a factor of how large a block compression
 algorithm uses.  The incompressible buffer is filled only once before write
