@@ -24,5 +24,10 @@ incompatibilities are known to exist between major versions.
     IOR versions 2.8.8 and later, if not one of the -w -r -W or -R options is
     set, then -w and -r are set implicitly.
 
-4)  IOR version 3 (Jan 2012-present) has changed the output of IOR somewhat,
+4)  IOR version 3.0 - 3.2 (2012-2020) has changed the output of IOR somewhat,
     and the "testNum" option was renamed "refNum".
+
+5)  IOR version 3.3 (2021 - present) introduced new syntax for module-specific
+    options and some (but not all) module-specific paramters have begun being
+    ported to the new syntax.  Notably, the former ``-B``/``useO_DIRECT`` option
+    is now set using ``--posix.odirect``.
