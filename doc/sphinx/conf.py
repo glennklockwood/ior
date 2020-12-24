@@ -74,9 +74,9 @@ author = u'The IOR Developer Community'
 # built documents.
 #
 # The short X.Y version.
-version = u'3.2.0'
+version = u'3.3.0'
 # The full version, including alpha/beta/rc tags.
-release = u'3.2.0'
+release = u'3.3.0'
 
 for line in open(os.path.join('..', '..', 'META'), 'r'):
     key, value = line.split(None, 1)
