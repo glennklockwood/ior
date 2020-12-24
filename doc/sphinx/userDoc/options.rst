@@ -360,7 +360,7 @@ Always print the long summary for each test even if the job is interrupted. (def
 
 
 
-POSIX-only flags and arguments
+POSIX-only options
 --------------------------------------------------------------------------------
 
 posix.odirect
@@ -387,7 +387,7 @@ Perform fsync after POSIX file close (default: 0)
 
 
 
-MPIIO-only flags & arguments
+MPIIO-only options
 --------------------------------------------------------------------------------
 
 preallocate
@@ -413,7 +413,7 @@ akin to ``MULTIBLOCK_REGION_SIZE`` (default: 0)
 
 
 
-HDF5-only flags & arguments
+HDF5-only options
 --------------------------------------------------------------------------------
 
 individualDataSets
