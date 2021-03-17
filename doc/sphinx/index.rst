@@ -15,6 +15,7 @@
     userDoc/options
     userDoc/scripts
     userDoc/compatibility
+    userDoc/known-issues
     FAQ <userDoc/faq>
 
 
