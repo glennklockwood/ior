@@ -185,13 +185,17 @@ typedef long long int      IOR_size_t;
         ERRF("%s", MSG);                                                 \
 } while (0)
 
-
-/* display a simple error message (i.e. errno is not set) and terminate execution */
-#define ERR_SIMPLE(MSG) do {                                            \
-        fprintf(stdout, "ior ERROR: %s, (%s:%d)\n",                     \
-                MSG, __FILE__, __LINE__);                               \
+/* simple error (errno not set) with format string and terminate */
+#define ERRF_SIMPLE(FORMAT, ...) do {                                   \
+        fprintf(stdout, "ior ERROR: " FORMAT ", (%s:%d)\n",             \
+                __VA_ARGS__, __FILE__, __LINE__);                       \
         fflush(stdout);                                                 \
         MPI_Abort(MPI_COMM_WORLD, -1);                                  \
+} while (0)
+
+/* display a simple error message and terminate execution */
+#define ERR_SIMPLE(MSG) do {                                            \
+        ERRF_SIMPLE("%s", MSG);                                         \
 } while (0)
 
 

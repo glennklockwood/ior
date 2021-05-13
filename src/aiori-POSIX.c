@@ -544,7 +544,7 @@ static IOR_offset_t POSIX_Xfer(int access, void *file, IOR_size_t * buffer,
                         }
                         rc = read(fd, ptr, remaining);
                         if (rc == 0)
-                                ERRF("read(%d, %p, %lld) returned EOF prematurely",
+                                ERRF_SIMPLE("read(%d, %p, %lld) returned EOF prematurely",
                                         fd, (void*)ptr, remaining);
                         if (rc == -1)
                                 ERRF("read(%d, %p, %lld) failed",
