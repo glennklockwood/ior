@@ -11,7 +11,6 @@
 * Implement of abstract I/O interface for POSIX.
 *
 \******************************************************************************/
-
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
@@ -32,10 +31,15 @@
 #include <assert.h>
 
 
-#ifdef HAVE_LINUX_LUSTRE_LUSTRE_USER_H
-#  include <linux/lustre/lustre_user.h>
-#elif defined(HAVE_LUSTRE_LUSTRE_USER_H)
-#  include <lustre/lustre_user.h>
+#if defined(HAVE_LUSTRE_LUSTREAPI)
+#  include <string.h>
+#  if defined(HAVE_LUSTRE_LUSTREAPI_H)
+#    include <lustre/lustreapi.h>
+#  elif defined(HAVE_LINUX_LUSTRE_LUSTRE_USER_H)
+#    include <linux/lustre/lustre_user.h>
+#  elif defined(HAVE_LUSTRE_LUSTRE_USER_H)
+#    include <lustre/lustre_user.h>
+#  endif
 #endif
 #ifdef HAVE_GPFS_H
 #  include <gpfs.h>
@@ -314,6 +318,158 @@ bool beegfs_createFilePath(char* filepath, mode_t mode, int numTargets, int chun
 }
 #endif /* HAVE_BEEGFS_BEEGFS_H */
 
+#ifdef HAVE_LUSTRE_LUSTREAPI
+
+#ifndef LLAPI_LAYOUT_OVERSTRIPING
+    #define LLAPI_LAYOUT_OVERSTRIPING 4ULL
+#endif
+
+#ifndef strchrnul
+char *strchrnul(const char *s1, int i) {
+    char *s = strchr(s1, i);
+    return s ? s : (char *)s1 + strlen(s1);
+}
+#endif
+
+static int lustre_parseTargets(uint32_t *tgts, int size, int offset, char *arg,
+        unsigned long long *pattern)
+{
+    int rc;
+    int nr = offset;
+    int slots = size - offset;
+    char *ptr = NULL;
+    bool overstriped = false;
+    bool end_of_loop;
+
+    if (arg == NULL)
+        return -EINVAL;
+
+    end_of_loop = false;
+    while (!end_of_loop) {
+        int start_index = 0;
+        int end_index = 0;
+        int i;
+        char *endptr = NULL;
+
+        rc = -EINVAL;
+
+        ptr = strchrnul(arg, ',');
+
+        end_of_loop = *ptr == '\0';
+        *ptr = '\0';
+
+        start_index = strtol(arg, &endptr, 0);
+        if (endptr == arg) /* no data at all */
+            break;
+        if (*endptr != '-' && *endptr != '\0') /* has invalid data */
+            break;
+
+        end_index = start_index;
+        if (*endptr == '-') {
+            end_index = strtol(endptr + 1, &endptr, 0);
+            if (*endptr != '\0')
+                break;
+            if (end_index < start_index)
+                break;
+        }
+
+        for (i = start_index; i <= end_index && slots > 0; i++) {
+            int j;
+
+            /* remove duplicate */
+            for (j = 0; j < offset; j++) {
+                if (tgts[j] == i
+                && pattern
+                && *pattern == LLAPI_LAYOUT_OVERSTRIPING)
+                    overstriped = true;
+                else if (tgts[j] == i)
+                    return -EINVAL;
+            }
+
+            j = offset;
+
+            if (j == offset) { /* check complete */
+                tgts[nr++] = i;
+                --slots;
+            }
+        }
+
+        if (slots == 0 && i < end_index)
+            break;
+
+        *ptr = ',';
+        arg = ++ptr;
+        offset = nr;
+        rc = 0;
+    }
+    if (!end_of_loop && ptr != NULL)
+        *ptr = ',';
+
+    if (!overstriped && pattern)
+        *pattern = LLAPI_LAYOUT_DEFAULT;
+
+    return rc < 0 ? rc : nr;
+}
+
+int lustre_createFilePath(char *filename, int open_flags, mode_t mode, char *layout_str, unsigned long long stripe_size, int stripe_width)
+{
+    uint32_t targets[LOV_MAX_STRIPE_COUNT] = {0};
+
+    int num_osts = lustre_parseTargets(
+        targets,
+        sizeof(targets) / sizeof(uint32_t), /* should always be LOV_MAX_STRIPE_COUNT */
+        0,
+        layout_str,
+        NULL);
+
+    if (num_osts < 0)
+    {
+        EWARNF("invalid OST target(s): %s\n", layout_str);
+        return EINVAL;
+    }
+
+    struct llapi_layout *layout = llapi_layout_alloc();
+    if (!layout)
+    {
+        EWARN("llapi_layout_alloc() failed\n");
+        return ENOMEM;
+    }
+
+    llapi_layout_stripe_count_set(layout, stripe_width > 0 ? stripe_width : num_osts);
+    llapi_layout_stripe_size_set(layout, stripe_size);
+
+    if (stripe_width > 0) {
+        /* evenly distribute files across osts */
+        int stride = num_osts / stripe_width;
+        for (int i = 0; i < stripe_width; i++) {
+            int ost_idx = (i * stride + rank) % num_osts;
+            int rc = llapi_layout_ost_index_set(layout, i, targets[ost_idx]);
+            if (rc != 0)
+            {
+                EWARNF("failed to set layout on %s", filename);
+                break;
+            }
+        }
+    }
+    else {
+        /* stripe every file across every ost */
+        for (int i = 0; i < num_osts; i++) {
+            int rc = llapi_layout_ost_index_set(layout, i, targets[i]);
+            if (rc != 0)
+            {
+                EWARNF("failed to set layout on %s", filename);
+                break;
+            }
+        }
+    }
+
+    int fd = llapi_layout_file_create(filename, open_flags|O_CREAT|O_EXCL, mode, layout);
+
+    llapi_layout_free(layout);
+
+    return fd;
+}
+#endif /* HAVE_LUSTRE_LUSTREAPI */
 
 /*
  * Creat and open a file through the POSIX interface.
@@ -335,60 +491,63 @@ void *POSIX_Create(char *testFileName, IOR_param_t * param)
         if(param->dryRun)
           return 0;
 
-#ifdef HAVE_LUSTRE_LUSTRE_USER_H
-/* Add a #define for FASYNC if not available, as it forms part of
- * the Lustre O_LOV_DELAY_CREATE definition. */
-#ifndef FASYNC
-#define FASYNC          00020000   /* fcntl, for BSD compatibility */
-#endif
-
+#ifdef HAVE_LUSTRE_LUSTREAPI
         if (param->lustre_set_striping) {
                 /* In the single-shared-file case, task 0 has to creat the
                    file with the Lustre striping options before any other processes
                    open the file */
                 if (!param->filePerProc && rank != 0) {
+                    printf("not setting striping\n");
                         MPI_CHECK(MPI_Barrier(testComm), "barrier error");
                         fd_oflag |= O_RDWR;
                         *fd = open64(testFileName, fd_oflag, mode);
                         if (*fd < 0)
                                 ERRF("open64(\"%s\", %d, %#o) failed",
                                         testFileName, fd_oflag, mode);
-                } else {
-                        struct lov_user_md opts = { 0 };
+                }
+                else {
+                    /* lustre stripe size, start ost, stripe count across all OSTs */
+                    fd_oflag |= O_RDWR;
+                    if (!param->lustre_osts)
+                    {
+                        *fd = llapi_file_open(
+                                testFileName,
+                                fd_oflag | O_CREAT | O_EXCL,
+                                mode,
+                                param->lustre_stripe_size,
+                                param->lustre_start_ost,
+                                param->lustre_stripe_count,
+                                LOV_PATTERN_NONE);
+                    }
+                    /* explicit OST list */
+                    else
+                    {
+                        *fd = lustre_createFilePath(
+                                testFileName,
+                                fd_oflag,
+                                mode,
+                                param->lustre_osts,
+                                param->lustre_stripe_size,
+                                param->lustre_stripe_count);
+                    }
 
-                        /* Setup Lustre IOCTL striping pattern structure */
-                        opts.lmm_magic = LOV_USER_MAGIC;
-                        opts.lmm_stripe_size = param->lustre_stripe_size;
-                        opts.lmm_stripe_offset = param->lustre_start_ost;
-                        opts.lmm_stripe_count = param->lustre_stripe_count;
-
-                        /* File needs to be opened O_EXCL because we cannot set
-                         * Lustre striping information on a pre-existing file.*/
-
-                        fd_oflag |=
-                            O_CREAT | O_EXCL | O_RDWR | O_LOV_DELAY_CREATE;
-                        *fd = open64(testFileName, fd_oflag, mode);
-                        if (*fd < 0) {
-                                fprintf(stdout, "\nUnable to open '%s': %s\n",
-                                        testFileName, strerror(errno));
-                                MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, -1),
-                                          "MPI_Abort() error");
-                        } else if (ioctl(*fd, LL_IOC_LOV_SETSTRIPE, &opts)) {
-                                char *errmsg = "stripe already set";
-                                if (errno != EEXIST && errno != EALREADY)
-                                        errmsg = strerror(errno);
-                                fprintf(stdout,
-                                        "\nError on ioctl for '%s' (%d): %s\n",
-                                        testFileName, *fd, errmsg);
-                                MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, -1),
-                                          "MPI_Abort() error");
-                        }
-                        if (!param->filePerProc)
-                                MPI_CHECK(MPI_Barrier(testComm),
-                                          "barrier error");
+                    if (*fd < 0) {
+                        if (*fd == EINVAL)
+                            fprintf(stdout, "\nUnable to open '%s': invalid stripe specification\n", testFileName);
+                        else if (*fd == EEXIST || *fd == EALREADY)
+                            fprintf(stdout, "\nUnable to open '%s': striping information already set\n", testFileName);
+                        else if (*fd == ENOTTY)
+                            fprintf(stdout, "\nUnable to open '%s': file not on a Lustre file system\n", testFileName);
+                        else
+                            fprintf(stdout, "\nUnable to open '%s': %s\n", testFileName, strerror(errno));
+                        MPI_CHECK(MPI_Abort(MPI_COMM_WORLD, -1), "MPI_Abort() error");
+                    } 
+                    if (!param->filePerProc)
+                        MPI_CHECK(MPI_Barrier(testComm), "barrier error");
                 }
         } else {
-#endif                          /* HAVE_LUSTRE_LUSTRE_USER_H */
+#endif /* HAVE_LUSTRE_LUSTREAPI */
+            printf("no striping to set\n");
 
                 fd_oflag |= O_CREAT | O_RDWR;
 
@@ -412,7 +571,7 @@ void *POSIX_Create(char *testFileName, IOR_param_t * param)
                         ERRF("open64(\"%s\", %d, %#o) failed",
                                 testFileName, fd_oflag, mode);
 
-#ifdef HAVE_LUSTRE_LUSTRE_USER_H
+#ifdef HAVE_LUSTRE_LUSTREAPI
         }
 
         if (param->lustre_ignore_locks) {
@@ -420,7 +579,7 @@ void *POSIX_Create(char *testFileName, IOR_param_t * param)
                 if (ioctl(*fd, LL_IOC_SETFLAGS, &lustre_ioctl_flags) == -1)
                         ERRF("ioctl(%d, LL_IOC_SETFLAGS, ...) failed", *fd);
         }
-#endif                          /* HAVE_LUSTRE_LUSTRE_USER_H */
+#endif /* HAVE_LUSTRE_LUSTREAPI */
 
 #ifdef HAVE_GPFS_FCNTL_H
         /* in the single shared file case, immediately release all locks, with
@@ -472,7 +631,7 @@ void *POSIX_Open(char *testFileName, IOR_param_t * param)
         if (*fd < 0)
                 ERRF("open64(\"%s\", %d) failed", testFileName, fd_oflag);
 
-#ifdef HAVE_LUSTRE_LUSTRE_USER_H
+#ifdef HAVE_LUSTRE_LUSTREAPI
         if (param->lustre_ignore_locks) {
                 int lustre_ioctl_flags = LL_FILE_IGNORE_LOCK;
                 if (verbose >= VERBOSE_1) {
@@ -482,7 +641,7 @@ void *POSIX_Open(char *testFileName, IOR_param_t * param)
                 if (ioctl(*fd, LL_IOC_SETFLAGS, &lustre_ioctl_flags) == -1)
                         ERRF("ioctl(%d, LL_IOC_SETFLAGS, ...) failed", *fd);
         }
-#endif                          /* HAVE_LUSTRE_LUSTRE_USER_H */
+#endif                          /* HAVE_LUSTRE_LUSTREAPI */
 
 #ifdef HAVE_GPFS_FCNTL_H
         if(param->gpfs_release_token) {

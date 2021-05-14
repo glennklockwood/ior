@@ -266,6 +266,12 @@ void DecodeDirective(char *line, IOR_param_t *params, options_all_t * module_opt
                 ERR("ior was not compiled with Lustre support");
 #endif
                 params->lustre_ignore_locks = atoi(value);
+        } else if (strcasecmp(option, "lustreosts") == 0) {
+#ifndef HAVE_LUSTRE_LUSTREAPI
+                ERR("ior was not compiled with Lustre support");
+#endif
+                params->lustre_osts = strdup(value);
+                params->lustre_set_striping = 1;
         } else if (strcasecmp(option, "gpfshintaccess") == 0) {
 #ifndef HAVE_GPFS_FCNTL_H
                 ERR("ior was not compiled with GPFS hint support");

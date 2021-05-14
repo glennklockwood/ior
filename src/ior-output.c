@@ -382,6 +382,16 @@ void ShowTestStart(IOR_param_t *test)
     PrintKeyValInt("setTimeStampSignature/incompressibleSeed", test->setTimeStampSignature); /* Seed value was copied into setTimeStampSignature as well */
     PrintKeyValInt("collective", test->collective);
     PrintKeyValInt("segmentCount", test->segmentCount);
+#ifdef HAVE_LUSTRE_LUSTREAPI
+    if (test->lustre_set_striping) {
+        PrintKeyVal("Lustre stripe size", ((test->lustre_stripe_size == 0) ? "Use default" :
+                    HumanReadable(test->lustre_stripe_size, BASE_TWO)));
+        PrintKeyValInt("Lustre stripe count", test->lustre_stripe_count);
+        PrintKeyValInt("Lustre start ost", test->lustre_start_ost);
+        PrintKeyVal("Lustre ost list", test->lustre_osts ? test->lustre_osts : "all");
+    }
+#endif /* HAVE_LUSTRE_LUSTREAPI */
+
     #ifdef HAVE_GPFS_FCNTL_H
     PrintKeyValInt("gpfsHintAccess", test->gpfs_hint_access);
     PrintKeyValInt("gpfsReleaseToken", test->gpfs_release_token);
@@ -453,13 +463,15 @@ void ShowSetup(IOR_param_t *params)
     PrintKeyValInt("dryRun", params->dryRun);
   }
 
-#ifdef HAVE_LUSTRE_LUSTRE_USER_H
+#ifdef HAVE_LUSTRE_LUSTREAPI
   if (params->lustre_set_striping) {
     PrintKeyVal("Lustre stripe size", ((params->lustre_stripe_size == 0) ? "Use default" :
      HumanReadable(params->lustre_stripe_size, BASE_TWO)));
     PrintKeyValInt("Lustre stripe count", params->lustre_stripe_count);
+    PrintKeyValInt("Lustre start ost", params->lustre_start_ost);
+    PrintKeyVal("Lustre ost list", params->lustre_osts ? params->lustre_osts : "all");
   }
-#endif /* HAVE_LUSTRE_LUSTRE_USER_H */
+#endif /* HAVE_LUSTRE_LUSTREAPI */
   if (params->deadlineForStonewalling > 0) {
     PrintKeyValInt("stonewallingTime", params->deadlineForStonewalling);
     PrintKeyValInt("stoneWallingWearOut", params->stoneWallingWearOut );

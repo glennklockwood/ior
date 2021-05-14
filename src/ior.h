@@ -197,6 +197,7 @@ typedef struct
     int lustre_start_ost;
     int lustre_set_striping;         /* flag that we need to set lustre striping */
     int lustre_ignore_locks;
+    char *lustre_osts;
 
     /* gpfs variables */
     int gpfs_hint_access;          /* use gpfs "access range" hint */
